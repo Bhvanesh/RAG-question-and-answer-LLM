@@ -80,9 +80,9 @@ async def register(user: UserBase, db : Session = Depends(get_db)):
         )
         db.add(new_user)
         db.commit()
-        result = db.refresh(new_user)
+        db.refresh(new_user)
         logger.info(f"User registered successfully | {new_user.username}")
-        return result
+        return new_user
     except HTTPException:
         raise
     except Exception as e:
