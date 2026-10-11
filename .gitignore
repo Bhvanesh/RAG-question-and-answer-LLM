@@ -5,3 +5,4 @@ chroma_db/
 uploads/
 app.log
 *.pyc
+.git/
