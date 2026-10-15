@@ -13,14 +13,25 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def evaluate_rag_response(question: str, answer: str, context: list[str], ground_truth:str = None):
+    
+    if isinstance(context, str):
+        context = [context]
+    if not context:
+        context = ["No context available"]
+
+
     """ Evaluate a RAG response using RAGAS metrics.
     question -> what the user asked
     answer -> what the AI answered
     contexts -> the chunks retrived from ChromaDB
     ground_truth -> optional correct answer for comparison"""
 
-    data = {"question":[question], "answer":[answer], "contexts": [context]}
-
+    #data = {"question":[question], "answer":[answer], "contexts": [context]}
+    data = {
+        "user_input": [question],
+        "response": [answer],
+        "retrieved_contexts": [context]
+    }
     if ground_truth:
         data["ground_truth"] = [ground_truth]
 
