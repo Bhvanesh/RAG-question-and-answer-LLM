@@ -44,8 +44,8 @@ def evaluate_rag_response(question: str, answer: str, context: list[str], ground
     
     start_time = time.time()
     results = evaluate(
-        datasets = dataset,
-        metric = metrics,
+        dataset = dataset,
+        metrics = metrics,
         llm = wrapped_llm,
         embeddings = wrapped_embeddings
     )
