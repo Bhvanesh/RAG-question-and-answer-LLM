@@ -179,14 +179,15 @@ async def ask_with_evaluator(request: EvaluationRequest, db: Session = Depends(g
         scores = evaluate_rag_response( question = request.question, answer = answers, context = context, ground_truth = request.ground_truth)
 
         evaluation = EvaluationResult(
-            document_id=request.document_id,
+            id=request.document_id,
             question=request.question,
             answer=answers,
-            faithfulness=scores["faithfulness"],
-            answer_relevancy=scores["answer_relevancy"],
             context_precision=scores["context_precision"],
             context_recall=scores["context_recall"],
-            evaluation_latency=scores["evaluation_latency_seconds"]
+            faithfulness=scores["faithfulness"],
+            answer_relevancy=scores["answer_relevancy"],
+            evaluation_latency_seconds=scores["evaluation_latency_seconds"],
+            created_at=datetime.utcnow()
         )
         db.add(evaluation)
         db.commit()
