@@ -42,8 +42,9 @@ def answer_question(document_id: int, question:str):
     #qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
     answer = retriever.invoke(question)
     context = "\n\n".join([doc.page_content for doc in answer])
-    prompt = f"""Use the following context to answer the question:\n\n{context}\n\nQuestion: {question} Answer:"""
     prompt = f"""You are a helpful assistant analyzing a document. Answer the question clearly and professionally.Format your response in a clean, readable way.
     If listing items, number them properly. If the information is not in the document, say so clearly. Context: {context} Question: {question} Answer:"""
     response = llm.invoke(prompt)
-    return response.content
+    answers = response.content
+    return { "answer": answers, "contexts": context }
+

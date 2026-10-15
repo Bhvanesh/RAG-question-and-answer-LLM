@@ -1,11 +1,12 @@
 from database import Base, engine, SessionLocal
 from dotenv import load_dotenv
 import time
-from models import User, Document
-from schemas import DocumentResponse, UserBase, userdetails, Token, QuestionRequest, AnswerResponse
+from models import User, Document, EvaluationResult
+from evalutor import evaluate_rag_response
+from schemas import DocumentResponse, UserBase, userdetails, Token, QuestionRequest, AnswerResponse, EvaluationRequest, EvaluationScores, EvaluationResponse, EvaluationResultResponse
 from auth import verify_token, create_token, verify_password, hash_password
 from ai_engine import answer_question, process_document
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request, logger
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -152,10 +153,65 @@ async def ask_question(data: QuestionRequest, db: Session = Depends(get_db), Cur
         if not document:
             error_response(status_code=404, message="Document not found")
 
-        answer = answer_question(document.id, data.question)
-        return { "question": data.question, "answer": answer, "document": document.filename}
+        result = answer_question(document.id, data.question)
+        answers = result["answer"]
+       
+        return { "question": data.question, "answer": answers, "document": document.filename}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Exception occurred while asking question for user | {Currentuser.username} | {str(e)}")
+        error_response(status_code=500, message=f"Exception occured : {str(e)}")
+
+
+@app.post("/ask/evaluate", response_model = EvaluationResponse)
+async def ask_with_evaluator(request: EvaluationRequest, db: Session = Depends(get_db), CurrentUser: User = Depends(authenticate_user)):
+    try:
+        logger.info(f"Evaluation request | {CurrentUser.username} | {request.question}")
+        document = db.query(Document).filter(Document.id == request.document_id, Document.owner_id == CurrentUser.id).first()
+        if not document:
+            error_response(status_code=404, message="Document not found")
+
+        result = answer_question(document.id, request.question)
+        answers = result["answer"] 
+        context = result["context"]
+        logger.info(f"Running RAGAS evaluation for document | {document.filename}")
+        scores = evaluate_rag_response( question = request.question, answer = answers, context = context, ground_truth = request.ground_truth)
+
+        evaluation = EvaluationResult(
+            document_id=request.document_id,
+            question=request.question,
+            answer=answers,
+            faithfulness=scores["faithfulness"],
+            answer_relevancy=scores["answer_relevancy"],
+            context_precision=scores["context_precision"],
+            context_recall=scores["context_recall"],
+            evaluation_latency=scores["evaluation_latency_seconds"]
+        )
+        db.add(evaluation)
+        db.commit()
+        db.refresh(evaluation)
+
+        return {"question": request.question, "answer": answers, "document": document.filename, "scores": EvaluationScores(
+        faithfulness=scores["faithfulness"], answer_relevancy=scores["answer_relevancy"], context_precision=scores["context_precision"],
+        context_recall=scores["context_recall"], evaluation_latency_seconds=scores["evaluation_latency_seconds"])}
+    except HTTPException as e:
+        raise
+    except Exception as e:
+        logger.error(f"Exception occurred while asking question for user | {CurrentUser.username} | {str(e)}")
+        error_response(status_code=500, message=f"Exception occured : {str(e)}")
+
+
+@app.get("/evaluations", response_model=list[EvaluationResultResponse])
+async def get_evaluations(
+    db: Session = Depends(get_db),
+    Currentuser: User = Depends(authenticate_user)
+):
+    try:
+        evaluations = db.query(EvaluationResult).join(Document).filter(Document.owner_id == Currentuser.id).all()
+        return evaluations
+    except HTTPException as e:
+        raise
+    except Exception as e:
+        logger.error(f"Exception occurred while fetching evaluations for user | {Currentuser.username} | {str(e)}")
         error_response(status_code=500, message=f"Exception occured : {str(e)}")

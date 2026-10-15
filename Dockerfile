@@ -6,10 +6,13 @@ COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
+# Download nltk data needed by RAGAS
+RUN python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
+
 COPY . .
 
 RUN mkdir -p uploads chroma_db
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

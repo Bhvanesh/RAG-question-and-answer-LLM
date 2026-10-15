@@ -40,3 +40,35 @@ class AnswerResponse(BaseModel):
     answer: str
     document: str
 
+class EvaluationRequest(BaseModel):
+    document_id: int
+    question: str
+    ground_truth: str | None = None 
+
+class EvaluationScores(BaseModel):
+    faithfulness: float| None = None
+    answer_relevancy: float| None = None
+    context_precision: float| None = None
+    context_recall: float| None = None
+    evaluation_latency_seconds: float| None = None
+
+class EvaluationResponse(BaseModel):
+    question: str
+    answer: str
+    document: str
+    evaluation_score: EvaluationScores
+
+class EvaluationResultResponse(BaseModel):
+    id: int
+    question: str
+    answer: str
+    faithfulness: float | None = None
+    answer_relevancy: float | None = None
+    context_precision: float | None = None
+    context_recall: float | None = None
+    evaluation_latency_seconds: float | None = None
+    created_at: datetime
+
+
+    class Config:
+        from_attributes = True

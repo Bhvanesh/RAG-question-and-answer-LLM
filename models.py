@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, Float, String, ForeignKey
 from database import Base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -20,3 +20,18 @@ class Document(Base):
     upload_date = Column(DateTime, default=datetime.utcnow)
     owner_id = Column(Integer, ForeignKey("users.id"))
     owner = relationship("User", back_populates="documents")
+
+
+class EvaluationResult(Base):
+    __tablename__ = "evaluation_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    question = Column(String, nullable=False)
+    answer = Column(String, nullable =False)
+    context_precision = Column(Float, nullable=False)
+    context_recall = Column(Float, nullable=False)
+    faithfulness = Column(Float, nullable=False)
+    answer_relevancy = Column(Float, nullable=False)
+    evaluation_latency_seconds = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
