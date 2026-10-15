@@ -174,7 +174,7 @@ async def ask_with_evaluator(request: EvaluationRequest, db: Session = Depends(g
 
         result = answer_question(document.id, request.question)
         answers = result["answer"] 
-        context = result["context"]
+        context = result["contexts"]
         logger.info(f"Running RAGAS evaluation for document | {document.filename}")
         scores = evaluate_rag_response( question = request.question, answer = answers, context = context, ground_truth = request.ground_truth)
 
