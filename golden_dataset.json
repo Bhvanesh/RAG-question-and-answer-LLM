@@ -42,8 +42,8 @@
       "ground_truth": "February 2024"
     },
     {
-      "question": "What vector database does the candidate have experience with?",
-      "ground_truth": "ChromaDB"
+      "question": "which location the candidate is working? ",
+      "ground_truth": "Chennai"
     },
     {
       "question": "What is the candidate's location?",
