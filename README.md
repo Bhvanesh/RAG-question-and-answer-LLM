@@ -1,66 +1,175 @@
-# AI Document Q&A API
+# AI Document Q&A API with RAG Evaluation
 
-A production-ready REST API that allows users to upload documents 
-and ask AI-powered questions about them using LangChain and OpenAI.
+A production-ready Retrieval Augmented Generation (RAG) API that lets users upload documents and ask natural language questions, with built-in automated evaluation of answer quality using RAGAS.
+
+**Live Demo:** https://awake-clarity-production-859a.up.railway.app/docs
+
+---
+
+## What It Does
+
+Upload a document (PDF or DOCX), ask questions about it in natural language, and get AI-generated answers backed by vector similarity search. Every answer can be automatically evaluated for quality using industry-standard RAG metrics.
+
+```
+Upload document → chunked → embedded → stored in ChromaDB
+        ↓
+Ask question → relevant chunks retrieved → GPT-3.5 generates answer
+        ↓
+Optional: RAGAS evaluates faithfulness, relevancy, precision, recall
+```
+
+---
 
 ## Tech Stack
-- FastAPI
-- PostgreSQL
-- SQLAlchemy
-- LangChain
-- ChromaDB
-- OpenAI GPT-3.5
-- JWT Authentication
-- Python
+
+- **API Framework:** FastAPI (async)
+- **AI Orchestration:** LangChain
+- **LLM:** OpenAI GPT-3.5-turbo
+- **Vector Database:** ChromaDB
+- **Evaluation:** RAGAS (faithfulness, answer relevancy, context precision, context recall)
+- **Database:** PostgreSQL + SQLAlchemy
+- **Authentication:** JWT with bcrypt password hashing
+- **Containerization:** Docker
+- **Deployment:** Railway
+- **Language:** Python 3.11
+
+---
 
 ## Features
+
 - User registration and login with JWT authentication
-- Upload PDF and DOCX documents
-- AI-powered Q&A on uploaded documents
-- Vector similarity search with ChromaDB
-- Request logging middleware
-- Async routes
-- Global exception handling
+- Upload and process PDF and DOCX documents
+- RAG-based question answering over uploaded documents
+- Automated answer quality evaluation using RAGAS metrics
+- Per-document isolated vector storage
+- Document ownership validation (users only access their own documents)
+- Request logging middleware with timing
+- Global exception handling with consistent error responses
+- Async routes for non-blocking performance
 
-## How It Works
-1. User uploads a document
-2. Document is split into chunks and stored as embeddings in ChromaDB
-3. User asks a question
-4. ChromaDB finds relevant chunks using vector similarity search
-5. OpenAI GPT generates answer from relevant chunks
+---
 
-## Endpoints
+## Evaluation Metrics
 
-### Auth
-- POST /register → Register new user
-- POST /login → Login and get JWT token
+This project goes beyond basic RAG by measuring answer quality automatically:
+
+- **Faithfulness** — Is the answer grounded in the retrieved document, or hallucinated?
+- **Answer Relevancy** — Is the answer actually relevant to the question asked?
+- **Context Precision** — Were the retrieved chunks useful for answering?
+- **Context Recall** — Did retrieval find all the relevant information? (requires ground truth)
+
+Example evaluation output:
+
+```json
+{
+  "question": "Who is Surya Balakrishnan?",
+  "answer": "Surya Balakrishnan is a Full-Stack Engineer and AI Consultant...",
+  "document": "resume.pdf",
+  "evaluation_score": {
+    "faithfulness": 1.0,
+    "answer_relevancy": 0.91,
+    "context_precision": 1.0,
+    "context_recall": 1.0,
+    "evaluation_latency_seconds": 8.36
+  }
+}
+```
+
+---
+
+## API Endpoints
+
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/register` | Register a new user |
+| POST | `/login` | Login and receive JWT token |
 
 ### Documents
-- POST /upload → Upload PDF or DOCX document (protected)
-- GET /documents → List all uploaded documents (protected)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/upload` | Upload a PDF or DOCX document |
+| GET | `/documents` | List all uploaded documents |
 
-### Q&A
-- POST /question → Ask question about a document (protected)
+### Question Answering
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/question` | Ask a question about a document |
+| POST | `/ask/evaluate` | Ask a question AND get RAGAS evaluation scores |
+| GET | `/evaluations` | Retrieve all past evaluation results |
+
+All document and question endpoints require JWT authentication.
+
+---
 
 ## Setup
 
 1. Clone the repository
-2. Create virtual environment:
-   python -m venv venv
-3. Activate:
+   ```
+   git clone https://github.com/Bhvanesh/RAG-question-and-answer-LLM.git
+   cd RAG-question-and-answer-LLM
+   ```
+
+2. Create a Python 3.11 virtual environment
+   ```
+   py -3.11 -m venv venv
    venv\Scripts\activate
-4. Install packages:
+   ```
+
+3. Install dependencies
+   ```
    pip install -r requirements.txt
-5. Create .env file:
-   DATABASE_URL=postgresql+psycopg2://username:password@localhost:5432/dbname
+   ```
+
+4. Create a `.env` file
+   ```
+   DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/dbname
    OPENAI_API_KEY=your-openai-key
    SECRET_KEY=your-secret-key
-6. Run:
+   ```
+
+5. Run the server
+   ```
    uvicorn main:app --reload
+   ```
 
-## Example
+6. Open `http://localhost:8000/docs` for the interactive Swagger UI
 
-Upload your resume and ask:
-- "What are the certifications listed?"
-- "What is the candidate's work experience?"
-- "What skills does this person have?"
+---
+
+## Docker
+
+Build and run with Docker Compose (includes PostgreSQL):
+
+```
+docker-compose up --build
+```
+
+---
+
+## Usage Flow
+
+1. Register a user via `/register`
+2. Login via `/login` and copy the access token
+3. Authorize in Swagger using the token
+4. Upload a document via `/upload`
+5. Note the returned `document_id`
+6. Ask questions via `/question` or `/ask/evaluate`
+
+---
+
+## Architecture Notes
+
+- **Vector storage** is isolated per document in separate ChromaDB directories, ensuring questions about one document never retrieve chunks from another.
+- **Embeddings** are generated using OpenAI's embedding model and stored as vectors for semantic similarity search.
+- **Chunking** uses recursive character splitting with overlap to preserve context across chunk boundaries.
+- **Evaluation** uses RAGAS with an LLM-as-judge approach to score answer quality automatically.
+
+---
+
+## Key Learnings
+
+- Built a complete RAG pipeline from document ingestion through evaluation
+- Implemented LLM-as-judge evaluation to quantify RAG quality objectively
+- Resolved complex dependency conflicts across RAGAS, LangChain, NumPy, SciPy, and PyArrow by pinning a compatible Python 3.11 stack
+- Learned that ephemeral container storage requires persistent volumes or managed vector databases for production vector storage
