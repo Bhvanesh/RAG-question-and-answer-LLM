@@ -37,7 +37,7 @@ def answer_question(document_id: int, question:str):
     embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
     vectorstore = Chroma(persist_directory=f"./chroma_db/{document_id}", embedding_function=embeddings)
 
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
 
     llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model = LLM_MODEL, temperature=0)
     #qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
