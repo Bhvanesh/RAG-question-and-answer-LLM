@@ -24,7 +24,7 @@ def process_document(file_path: str, document_id: int):
     else:
         raise ValueError("Unsupported file format")
 
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
     chunks = splitter.split_documents(pages)
 
