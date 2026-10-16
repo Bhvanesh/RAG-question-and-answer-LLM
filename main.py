@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import time
 from models import User, Document, EvaluationResult
 from evalutor import evaluate_rag_response
-from schemas import DocumentResponse, UserBase, userdetails, Token, QuestionRequest, AnswerResponse, EvaluationRequest, EvaluationScores, EvaluationResponse, EvaluationResultResponse
+from schemas import DocumentResponse, UserBase, UserResponse, Token, QuestionRequest, AnswerResponse, EvaluationRequest, EvaluationScores, EvaluationResponse, EvaluationResultResponse
 from auth import verify_token, create_token, verify_password, hash_password
 from ai_engine import answer_question, process_document
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request
@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 import logging
 import os
 from datetime import datetime
+import uuid
+from pathlib import Path
 
 
 ##################Logging Configuration##################
@@ -30,6 +32,8 @@ logger = logging.getLogger(__name__)
 os.makedirs("./uploads", exist_ok=True)
 
 app = FastAPI()
+ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ###################Middleware###########################
 @app.middleware("http")
 async def log_request(request: Request, call_next):
@@ -67,7 +71,7 @@ def authenticate_user(token: str = Depends(oauth2_schema), db: Session = Depends
 
 ################Authentication###########################
 
-@app.post("/register", response_model = userdetails)
+@app.post("/register", response_model = UserResponse)
 async def register(user: UserBase, db : Session = Depends(get_db)):
     try:
         logger.info(f"Attempting to register user | {user.username}")
@@ -111,25 +115,36 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 async def upload(file : UploadFile = File(...), db: Session = Depends(get_db), Currentuser: User = Depends(authenticate_user)):
 
     try:
-        logger.info(f"Uploading document | {file.filename}")
-        filepath = f"./uploads/{file.filename}"
+        original_name = file.filename or "unnamed"
+        ext = Path(original_name).suffix.lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            error_response(status_code=400, message="Invalid file type. Only PDF and DOCX files are allowed.")
+        
+        contents = await file.read()
+        if len(contents) > MAX_FILE_SIZE:
+            error_response(status_code=400, message="File size exceeds the maximum limit of 10 MB.")
+
+        safe_filename = f"{uuid.uuid4().hex}{ext}"
+        filepath = os.path.join("./uploads", safe_filename)
+
         with open(filepath, "wb") as f:
-            f.write(await file.read())
-        logger.info(f"Document saved to {filepath}")
-        document = Document(filename=file.filename, upload_date=datetime.utcnow(), owner_id=Currentuser.id)
+            f.write(contents)
+        logger.info(f"Document saved to {filepath} | {safe_filename}")
+
+        document = Document(filename=file.filename, stored_filename=safe_filename, upload_date=datetime.utcnow(), owner_id=Currentuser.id)
         db.add(document)
         db.commit()
         db.refresh(document)
         logger.info(f"Document details saved to DB | {document.id}")
 
-        chunk = process_document(filepath, document.id)
+        process_document(filepath, document.id)
         logger.info(f"Document processed into chunks | {document.id}")
         return document
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Exception occurred while uploading document | {file.filename} | {str(e)}")
-        error_response(status_code=500, message=f"Exception occured : {str(e)}")
+        error_response(status_code=500, message=f"Internal server error")
 
 @app.get("/documents", response_model=list[DocumentResponse])
 async def get_documents(db: Session = Depends(get_db), Currentuser: User = Depends(authenticate_user)):
@@ -142,7 +157,7 @@ async def get_documents(db: Session = Depends(get_db), Currentuser: User = Depen
         raise
     except Exception as e:
         logger.error(f"Exception occurred while fetching documents for user | {Currentuser.username} | {str(e)}")
-        error_response(status_code=500, message=f"Exception occured : {str(e)}")
+        error_response(status_code=500, message=f"Internal server error")
 
 
 @app.post("/question", response_model=AnswerResponse)
@@ -161,7 +176,7 @@ async def ask_question(data: QuestionRequest, db: Session = Depends(get_db), Cur
         raise
     except Exception as e:
         logger.error(f"Exception occurred while asking question for user | {Currentuser.username} | {str(e)}")
-        error_response(status_code=500, message=f"Exception occured : {str(e)}")
+        error_response(status_code=500, message=f"Internal server error")
 
 
 @app.post("/ask/evaluate", response_model = EvaluationResponse)
@@ -200,7 +215,7 @@ async def ask_with_evaluator(request: EvaluationRequest, db: Session = Depends(g
         raise
     except Exception as e:
         logger.error(f"Exception occurred while asking question for user | {CurrentUser.username} | {str(e)}")
-        error_response(status_code=500, message=f"Exception occured : {str(e)}")
+        error_response(status_code=500, message=f"Internal server error")
 
 
 @app.get("/evaluations", response_model=list[EvaluationResultResponse])
@@ -215,4 +230,4 @@ async def get_evaluations(
         raise
     except Exception as e:
         logger.error(f"Exception occurred while fetching evaluations for user | {Currentuser.username} | {str(e)}")
-        error_response(status_code=500, message=f"Exception occured : {str(e)}")
+        error_response(status_code=500, message=f"Internal server error")

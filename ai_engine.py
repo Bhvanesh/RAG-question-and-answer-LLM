@@ -10,6 +10,7 @@ import os
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 
 ##PROCESS and Load document
 
@@ -38,13 +39,17 @@ def answer_question(document_id: int, question:str):
 
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-    llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model = "gpt-3.5-turbo", temperature=0)
+    llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model = LLM_MODEL, temperature=0)
     #qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
     answer = retriever.invoke(question)
-    context = "\n\n".join([doc.page_content for doc in answer])
+
+
+    context = [doc.page_content for doc in answer]
+    sources = [ {"content": doc.page_content, "page": doc.metadeta.get("page")} for doc in docs]
+    context_text = "\n\n".join(context)
     prompt = f"""You are a helpful assistant analyzing a document. Answer the question clearly and professionally.Format your response in a clean, readable way.
-    If listing items, number them properly. If the information is not in the document, say so clearly. Context: {context} Question: {question} Answer:"""
+    If listing items, number them properly. If the information is not in the document, say so clearly. Context: {context_text} Question: {question} Answer:"""
     response = llm.invoke(prompt)
     answers = response.content
-    return { "answer": answers, "contexts": context }
+    return { "answer": answers, "contexts": context, "sources": sources }
 

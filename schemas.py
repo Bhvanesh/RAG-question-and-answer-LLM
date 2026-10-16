@@ -1,16 +1,21 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 
 class UserBase(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=6, max_length=128)
 
-class userdetails(UserBase):
+'''class userdetails(UserBase):
     id : int
     username  : str
 
     class Config:
-        orm_mode = True
+        orm_mode = True'''
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    model_config = ConfigDict(from_attributes=True)
 
 #####################################
 
@@ -35,6 +40,10 @@ class QuestionRequest(BaseModel):
     question: str
     document_id : int
 
+class SourceChunk(BaseModel):
+    content: str
+    page: int | None = None
+
 class AnswerResponse(BaseModel):
     question: str
     answer: str
@@ -57,6 +66,8 @@ class EvaluationResponse(BaseModel):
     answer: str
     document: str
     evaluation_score: EvaluationScores
+    sources: list[SourceChunk] = []
+
 
 class EvaluationResultResponse(BaseModel):
     id: int

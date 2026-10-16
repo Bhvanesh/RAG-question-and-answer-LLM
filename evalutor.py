@@ -78,6 +78,8 @@ def evaluate_rag_response(question: str, answer: str, context: list[str], ground
 
 def clean_score(value):
     if value is None or (isinstance(value, float) and math.isnan(value)):
-        return 0.0
+        return None
     return round(float(value), 3)
+
+
 
