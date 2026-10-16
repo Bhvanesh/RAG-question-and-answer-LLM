@@ -137,7 +137,7 @@ async def get_documents(db: Session = Depends(get_db), Currentuser: User = Depen
         existingdoc = db.query(Document).filter(Document.owner_id == Currentuser.id).all()
         if not existingdoc:
             error_response(status_code=404, message="No documents found")
-        return {"status": "success", "data": existingdoc}
+        return existingdoc
     except HTTPException:
         raise
     except Exception as e:
