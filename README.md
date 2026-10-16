@@ -106,7 +106,7 @@ All document and question endpoints require JWT authentication.
 
 1. Clone the repository
    ```
-   git clone https://github.com/Bhvanesh/RAG-question-and-answer-LLM.git
+   git clone https://github.com/Bhvanesh/RAG-question-and-answer-LLM.git 
    cd RAG-question-and-answer-LLM
    ```
 
