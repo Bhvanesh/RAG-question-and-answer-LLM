@@ -1,0 +1,53 @@
+{
+  "document_id": 1,
+  "test_cases": [
+    {
+      "question": "What is the candidate's CGPA?",
+      "ground_truth": "8.39"
+    },
+    {
+      "question": "What degree does the candidate hold?",
+      "ground_truth": "Bachelor of Engineering in Mechatronics"
+    },
+    {
+      "question": "Which company does the candidate currently work for?",
+      "ground_truth": "Accenture"
+    },
+    {
+      "question": "What is the candidate's current job title?",
+      "ground_truth": "Advanced App Engineering Associate"
+    },
+    {
+      "question": "Which university did the candidate attend?",
+      "ground_truth": "Kongu Engineering College"
+    },
+    {
+      "question": "What cloud certification does the candidate hold?",
+      "ground_truth": "Microsoft Azure Fundamentals AZ-900"
+    },
+    {
+      "question": "What programming languages does the candidate know?",
+      "ground_truth": "Python, C#, and SQL"
+    },
+    {
+      "question": "What AI frameworks has the candidate worked with?",
+      "ground_truth": "LangChain, RAG, and multi-agent orchestration"
+    },
+    {
+      "question": "What databases has the candidate used?",
+      "ground_truth": "PostgreSQL, SQL Server, and MySQL"
+    },
+    {
+      "question": "When did the candidate start working at Accenture?",
+      "ground_truth": "February 2024"
+    },
+    {
+      "question": "What vector database does the candidate have experience with?",
+      "ground_truth": "ChromaDB"
+    },
+    {
+      "question": "What is the candidate's location?",
+      "ground_truth": "Tamil Nadu, India"
+    }
+  ]
+}
