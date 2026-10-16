@@ -15,7 +15,7 @@ import os
 from datetime import datetime
 import uuid
 from pathlib import Path
-
+import json
 
 ##################Logging Configuration##################
 logging.basicConfig(
@@ -231,3 +231,70 @@ async def get_evaluations(
     except Exception as e:
         logger.error(f"Exception occurred while fetching evaluations for user | {Currentuser.username} | {str(e)}")
         error_response(status_code=500, message=f"Internal server error")
+
+
+import json
+
+@app.post("/batch-evaluate")
+async def batch_evaluate(db: Session = Depends(get_db),
+                         Currentuser: User = Depends(authenticate_user)):
+    try:
+        with open("golden_dataset.json", "r") as f:
+            data = json.load(f)
+
+        document_id = data["document_id"]
+        test_cases = data["test_cases"]
+
+        # verify document belongs to user
+        document = db.query(Document).filter(
+            Document.id == document_id,
+            Document.owner_id == Currentuser.id
+        ).first()
+        if not document:
+            error_response(status_code=404, message="Document not found")
+
+        results = []
+        for case in test_cases:
+            question = case["question"]
+            ground_truth = case["ground_truth"]
+            try:
+                rag_result = answer_question(document_id, question)
+                scores = evaluate_rag_response(
+                    question=question,
+                    answer=rag_result["answer"],
+                    context=rag_result["contexts"],
+                    ground_truth=ground_truth
+                )
+                results.append({
+                    "question": question,
+                    "faithfulness": scores["faithfulness"],
+                    "answer_relevancy": scores["answer_relevancy"],
+                    "context_precision": scores["context_precision"],
+                    "context_recall": scores["context_recall"]
+                })
+            except Exception as e:
+                logger.error(f"Batch eval failed for question | {question} | {str(e)}")
+                results.append({"question": question, "error": str(e)})
+
+        # aggregate
+        def avg(metric):
+            vals = [r[metric] for r in results
+                    if metric in r and r[metric] is not None]
+            return round(sum(vals) / len(vals), 3) if vals else None
+
+        aggregate = {
+            "avg_faithfulness": avg("faithfulness"),
+            "avg_answer_relevancy": avg("answer_relevancy"),
+            "avg_context_precision": avg("context_precision"),
+            "avg_context_recall": avg("context_recall"),
+            "total_questions": len(results),
+            "failed": len([r for r in results if "error" in r])
+        }
+
+        return {"aggregate": aggregate, "detailed_results": results}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Batch evaluation error | {str(e)}")
+        error_response(status_code=500, message="Batch evaluation failed")
