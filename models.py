@@ -26,6 +26,7 @@ class EvaluationResult(Base):
     __tablename__ = "evaluation_results"
 
     id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
     question = Column(String, nullable=False)
     answer = Column(String, nullable =False)
     context_precision = Column(Float, nullable=False)

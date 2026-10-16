@@ -7,13 +7,14 @@ from ragas import evaluate
 from ragas.metrics import (faithfulness, answer_relevancy, context_precision, context_recall)
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from datasets import Dataset
+import math
 
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def evaluate_rag_response(question: str, answer: str, context: list[str], ground_truth:str = None):
-    
+
     if isinstance(context, str):
         context = [context]
     if not context:
@@ -33,7 +34,7 @@ def evaluate_rag_response(question: str, answer: str, context: list[str], ground
         "retrieved_contexts": [context]
     }
     if ground_truth:
-        data["ground_truth"] = [ground_truth]
+        data["reference"] = [ground_truth]
 
     dataset = Dataset.from_dict(data)
 
@@ -67,9 +68,16 @@ def evaluate_rag_response(question: str, answer: str, context: list[str], ground
 
     return{
 
-        "faithfulness" : round(float(scores.get("faithfulness", 0)),3),
-        "answer_relevancy" : round(float(scores.get("answer_relevancy", 0)),3),
-        "context_precision" : round(float(scores.get("context_precision", 0)),3),
-        "context_recall" : round(float(scores.get("context_recall", 0)),3),
+        "faithfulness" : clean_score(scores.get("faithfulness")),
+        "answer_relevancy" : clean_score(scores.get("answer_relevancy")),
+        "context_precision" : clean_score(scores.get("context_precision")),
+        "context_recall" : clean_score(scores.get("context_recall")),
         "evaluation_latency_seconds": latency
     }
+
+
+def clean_score(value):
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return 0.0
+    return round(float(value), 3)
+

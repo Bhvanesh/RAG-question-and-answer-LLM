@@ -60,6 +60,7 @@ class EvaluationResponse(BaseModel):
 
 class EvaluationResultResponse(BaseModel):
     id: int
+    document_id: int          # ← add this
     question: str
     answer: str
     faithfulness: float | None = None
