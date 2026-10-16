@@ -45,7 +45,7 @@ def answer_question(document_id: int, question:str):
 
 
     context = [doc.page_content for doc in answer]
-    sources = [ {"content": doc.page_content, "page": doc.metadeta.get("page")} for doc in answer]
+    sources = [ {"content": doc.page_content, "page": doc.metadata.get("page")} for doc in answer]
     context_text = "\n\n".join(context)
     prompt = f"""You are a helpful assistant analyzing a document. Answer the question clearly and professionally.Format your response in a clean, readable way.
     If listing items, number them properly. If the information is not in the document, say so clearly. Context: {context_text} Question: {question} Answer:"""
