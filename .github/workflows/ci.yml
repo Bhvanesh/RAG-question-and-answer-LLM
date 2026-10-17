@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install fastapi uvicorn sqlalchemy pydantic \
+          "python-jose[cryptography]" "passlib[bcrypt]" bcrypt==4.0.1 \
+          python-multipart python-dotenv pytest httpx pytest-asyncio \
+          langchain langchain-openai langchain-community \
+          langchain-text-splitters pypdf docx2txt openai
+
+      - name: Run tests
+        env:
+          DATABASE_URL: sqlite+pysqlite:///:memory:
+          SECRET_KEY: test-secret-key-12345
+          OPENAI_API_KEY: test-openai-key
+          LLM_MODEL: gpt-3.5-turbo
+        run: |
+          pytest tests/ -v
