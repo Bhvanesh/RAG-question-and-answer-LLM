@@ -25,7 +25,7 @@ handlers=[logging.StreamHandler(), logging.FileHandler("app.log")])
 
 oauth2_schema = OAuth2PasswordBearer(tokenUrl="login")
 
-load_dotenv()
+load_dotenv(override = False)
 
 Base.metadata.create_all(bind = engine)
 logger = logging.getLogger(__name__)
@@ -233,7 +233,6 @@ async def get_evaluations(
         error_response(status_code=500, message=f"Internal server error")
 
 
-import json
 
 @app.post("/batch-evaluate")
 async def batch_evaluate(db: Session = Depends(get_db),
