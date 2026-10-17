@@ -29,9 +29,8 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: sqlite+pysqlite:///:memory:
-          SECRET_KEY: test-secret-key-12345
-          OPENAI_API_KEY: test-openai-key
-          LLM_MODEL: gpt-3.5-turbo
-        run: |
-          pytest tests/ -v
+          DATABASE_URL: "sqlite+pysqlite:///:memory:"
+          SECRET_KEY: "test-secret-key-12345"
+          OPENAI_API_KEY: "test-openai-key"
+          LLM_MODEL: "gpt-3.5-turbo"
+        run: pytest tests/ -v
