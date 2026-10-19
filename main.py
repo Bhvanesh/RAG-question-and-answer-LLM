@@ -170,8 +170,9 @@ async def ask_question(data: QuestionRequest, db: Session = Depends(get_db), Cur
 
         result = answer_question(document.id, data.question)
         answers = result["answer"]
+        sources = result["sources"]
        
-        return { "question": data.question, "answer": answers, "document": document.filename}
+        return { "question": data.question, "answer": answers, "sources": sources, "document": document.filename}
     except HTTPException:
         raise
     except Exception as e:

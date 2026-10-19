@@ -5,13 +5,6 @@ class UserBase(BaseModel):
     username: str = Field(min_length=3, max_length=50)
     password: str = Field(min_length=6, max_length=128)
 
-'''class userdetails(UserBase):
-    id : int
-    username  : str
-
-    class Config:
-        orm_mode = True'''
-
 class UserResponse(BaseModel):
     id: int
     username: str
@@ -24,9 +17,7 @@ class DocumentResponse(BaseModel):
     filename : str
     upload_date : datetime
     owner_id : int
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 #####################################
 
@@ -48,6 +39,7 @@ class AnswerResponse(BaseModel):
     question: str
     answer: str
     document: str
+    sources: list[SourceChunk] = []    
 
 class EvaluationRequest(BaseModel):
     document_id: int
@@ -71,7 +63,7 @@ class EvaluationResponse(BaseModel):
 
 class EvaluationResultResponse(BaseModel):
     id: int
-    document_id: int          # ← add this
+    document_id: int          
     question: str
     answer: str
     faithfulness: float | None = None
@@ -80,7 +72,4 @@ class EvaluationResultResponse(BaseModel):
     context_recall: float | None = None
     evaluation_latency_seconds: float | None = None
     created_at: datetime
-
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
