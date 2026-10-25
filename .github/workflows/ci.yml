@@ -25,7 +25,7 @@ jobs:
           "python-jose[cryptography]" "passlib[bcrypt]" bcrypt==4.0.1 \
           python-multipart python-dotenv pytest httpx pytest-asyncio \
           langchain langchain-openai langchain-community \
-          langchain-text-splitters pypdf docx2txt openai
+          langchain-text-splitters pypdf docx2txt openai rank-bm25
 
       - name: Run tests
         env:
