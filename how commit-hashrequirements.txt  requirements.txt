@@ -1,0 +1,45 @@
+* [33m6702629[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m requirement package update
+* [33ma60af57[m requirement package update
+* [33mecc9e05[m Docker file changes
+* [33mcd78ac4[m updated migration file packages
+* [33mae7be81[m updated migration file
+* [33mfac7d3c[m updated requirement.txt file
+* [33m9688c04[m git ci.yml file
+* [33mf1fb7cc[m updated the evaluation parameters with nullable field and Updated docker file
+* [33m6b73ef6[m BM25 and RRF code updates
+* [33m3ad5009[m Response model of answer model updated with sources field
+* [33mcccf8b7[m Readme updated with alembic
+* [33mcb56c3d[m fixed yaml env variable quoting
+* [33m7a5efd3[m added GitHub Actions CI workflow
+* [33m1201a82[m added alembic migrations and GitHub Actions CI
+* [33mf10b268[m pytest tests logic added, fixed load_dotenv override for test isolation
+* [33mb682937[m reversed chunk size decreased from 1000 to 500 anf k = 3
+* [33m1dea07c[m dataset question update
+* [33mc8d93a1[m chunk size decreased from 1000 to 500 anf k = 3
+* [33mb485665[m chunk size decreased from 1000 to 500
+* [33mb940288[m chunk size increased from k=3 to k=5
+* [33m7e4b4df[m Batch Evaluator function and golden_dataset function added in main.py
+* [33m0182acf[m Batch Evaluator function and golden_dataset function
+* [33m86a9a7b[m variable name changes
+* [33mec20828[m answer_question api changes
+* [33m362cc7b[m refining the evaluation pipeline
+* [33md5482d9[m update the readme file
+* [33m1103c84[m README Updated with the RAGAS feature guidelines
+* [33mc447b64[m GetDocument's return type changed
+* [33m19a5c75[m schema fields corrected
+* [33m16cbb9b[m Evaluation parameter update
+* [33m4087b25[m uvloop update
+* [33mc509e42[m Ragas Parameter update
+* [33medb9e88[m Dataset and metric changes
+* [33me69d62e[m context change in main.py
+* [33m522b8c3[m httpx version upgrade
+* [33m07a6778[m RAG Evaluation using RAGAS
+* [33mc8ebcc1[m main.py
+* [33m7bac022[m fixed requirements.txt
+* [33m5e3047c[m fixed requirements
+*   [33m9e3df9c[m Merge branch 'main' of https://github.com/Bhvanesh/RAG-question-and-answer-LLM
+[32m|[m[33m\[m  
+[32m|[m * [33md8e952b[m Add README for AI Document Q&A API
+* [33m|[m [33mc955e63[m added Dockerfile and docker-compose
+[33m|[m[33m/[m  
+* [33m1278665[m AI Document Q&A API with FastAPI LangChain ChromaDB and OpenAI
