@@ -4,7 +4,8 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from dotenv import load_dotenv
 from alembic import context
-
+import sys
+import os
 load_dotenv()
 
 
@@ -26,8 +27,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-import sys
-import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from database import Base
 from models import User, Document, EvaluationResult
