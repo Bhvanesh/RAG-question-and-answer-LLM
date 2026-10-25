@@ -14,4 +14,4 @@ RUN mkdir -p uploads chroma_db
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic stamp head && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --loop asyncio"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --loop asyncio"]
