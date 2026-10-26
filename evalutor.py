@@ -39,7 +39,7 @@ def evaluate_rag_response(question: str, answer: str, context: list[str], ground
     dataset = Dataset.from_dict(data)
 
     llm = ChatOpenAI(
-        model = "gpt-3.5-turbo",
+        model = "gpt-4o-mini",
         openai_api_key = OPENAI_API_KEY,
         temperature = 0
     )
