@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/Bhvanesh/RAG-question-and-answer-LLM/actions/workflows/ci.yml/badge.svg)
 
-A production-ready Retrieval Augmented Generation (RAG) API that lets users upload documents and ask natural language questions, with built-in automated evaluation of answer quality using RAGAS.
+A production-ready Retrieval Augmented Generation (RAG) API that lets users upload documents and ask natural language questions, with built-in hybrid search (BM25 + vector) and automated evaluation of answer quality using RAGAS.
 
 **Live Demo:** https://awake-clarity-production-859a.up.railway.app/docs  
 **GitHub:** https://github.com/Bhvanesh/RAG-question-and-answer-LLM
@@ -11,12 +11,18 @@ A production-ready Retrieval Augmented Generation (RAG) API that lets users uplo
 
 ## What It Does
 
-Upload a document (PDF or DOCX), ask questions about it in natural language, and get AI-generated answers backed by vector similarity search. Every answer can be automatically evaluated for quality using industry-standard RAG metrics.
+Upload a document (PDF or DOCX), ask questions about it in natural language, and get AI-generated answers backed by hybrid retrieval — combining semantic vector search with BM25 keyword search for more accurate results. Every answer can be automatically evaluated for quality using industry-standard RAG metrics.
 
 ```
-Upload document → chunked → embedded → stored in ChromaDB
+Upload document → chunked → embedded → stored in ChromaDB + BM25 index
         ↓
-Ask question → relevant chunks retrieved → GPT generates answer
+Ask question → two parallel searches:
+  Path 1: vector similarity search (semantic)
+  Path 2: BM25 keyword search (lexical)
+        ↓
+Reciprocal Rank Fusion combines both results
+        ↓
+GPT generates grounded answer with source citations
         ↓
 Optional: RAGAS evaluates faithfulness, relevancy, precision, recall
         ↓
@@ -31,6 +37,7 @@ Batch evaluation: run golden dataset → aggregate metrics → benchmark configs
 - **AI Orchestration:** LangChain
 - **LLM:** OpenAI GPT-4o-mini (configurable via LLM_MODEL env var)
 - **Vector Database:** ChromaDB (persistent volume on Railway)
+- **Lexical Search:** BM25 (rank-bm25) with Reciprocal Rank Fusion
 - **Evaluation:** RAGAS (faithfulness, answer relevancy, context precision, context recall)
 - **Database:** PostgreSQL + SQLAlchemy
 - **Migrations:** Alembic
@@ -47,6 +54,7 @@ Batch evaluation: run golden dataset → aggregate metrics → benchmark configs
 
 - User registration and login with JWT authentication
 - Upload and process PDF and DOCX documents (UUID filenames, type + size validation)
+- **Hybrid retrieval** — BM25 keyword search + vector semantic search combined via Reciprocal Rank Fusion
 - RAG-based question answering with source chunk citations and page numbers
 - Automated answer quality evaluation using RAGAS metrics
 - Batch evaluation endpoint — runs a full golden dataset in one pass
@@ -56,6 +64,29 @@ Batch evaluation: run golden dataset → aggregate metrics → benchmark configs
 - Global exception handling with consistent error responses
 - Database schema migrations with Alembic
 - Automated test suite with pytest (5 auth tests, CI on every push)
+
+---
+
+## Hybrid Search Architecture
+
+Standard RAG uses only vector similarity search — it finds semantically similar chunks but can miss exact keyword matches. This project uses **hybrid retrieval** combining two complementary methods:
+
+**Vector search (semantic):** finds chunks with similar *meaning* — handles synonyms and paraphrasing.
+
+**BM25 (lexical):** finds chunks with *exact keyword matches* — handles specific terms, proper nouns, and codes like "AZ-900" or "ChromaDB" that embeddings may not capture well.
+
+**Reciprocal Rank Fusion (RRF):** combines both ranked lists — chunks appearing highly in both searches get boosted, giving more robust retrieval than either method alone.
+
+```
+Question → embed → ChromaDB cosine search → top 10 ──┐
+Question → tokenize → BM25 keyword search → top 10 ──┤
+                                                       ↓
+                                         Reciprocal Rank Fusion
+                                                       ↓
+                                               Top 3 final chunks
+                                                       ↓
+                                          LLM generates answer
+```
 
 ---
 
@@ -73,7 +104,7 @@ Example evaluation output:
 ```json
 {
   "question": "Who is Surya Balakrishnan?",
-  "answer": "Surya Balakrishnan is a Full-Stack Engineer and AI Consultant...",
+  "answer": "Surya Balakrishnan is a Software Engineer at Accenture...",
   "document": "resume.pdf",
   "evaluation_score": {
     "faithfulness": 1.0,
@@ -93,11 +124,18 @@ Retrieval configurations were benchmarked against a fixed 12-question golden dat
 
 | Configuration | Faithfulness | Answer Relevancy | Context Precision | Context Recall |
 |---|---|---|---|---|
-| **k=3, chunk=1000** (chosen) | **0.85** | 0.96 | **0.889** | **0.917** |
+| k=3, chunk=1000 (baseline) | 0.85 | 0.96 | 0.889 | 0.917 |
 | k=5, chunk=1000 | 0.66 | 0.955 | 0.851 | 0.75 |
 | k=3, chunk=500 | 0.80 | 0.96 | 0.816 | 0.75 |
+| BM25 + vector + RRF (current) | **0.889** | **0.981** | 0.833 | **1.0** |
 
-Key finding: increasing retrieval depth (k=3→5) degraded faithfulness 22%. Reducing chunk size (1000→500) degraded recall 18%. The baseline configuration was empirically optimal.
+Key findings from benchmarking:
+- Increasing retrieval depth (k=3→5) degraded faithfulness 22% due to context noise
+- Reducing chunk size (1000→500) degraded recall 18% due to fragmented context
+- Baseline k=3, chunk=1000 was empirically optimal for pure vector search
+- BM25 hybrid search improved faithfulness +4.6%, answer relevancy +2.2%, and achieved perfect recall (1.0) across all 12 questions
+- Context precision dropped slightly (-6.3%) — expected tradeoff when combining two retrieval methods, more chunks retrieved means some less precise ones included
+- 0/12 questions failed in both baseline and hybrid configurations
 
 ---
 
@@ -213,6 +251,7 @@ docker-compose up --build
 
 ## Architecture Notes
 
+- **Hybrid retrieval** combines BM25 keyword search and ChromaDB vector search via Reciprocal Rank Fusion — more robust than either method alone, recovering queries where semantic search fails on exact terms.
 - **Vector storage** is isolated per document in separate ChromaDB directories — questions about one document never retrieve chunks from another.
 - **Persistent volume** mounted at `/app/chroma_db` on Railway — embeddings survive container restarts and redeployments.
 - **Embeddings** are generated using OpenAI's embedding model and stored as vectors for semantic similarity search.
@@ -226,6 +265,7 @@ docker-compose up --build
 ## Key Learnings
 
 - Built a complete RAG pipeline from document ingestion through automated evaluation and benchmarking
+- Implemented hybrid retrieval (BM25 + vector search + RRF) — discovered that pure semantic search fails on exact proper nouns and specific codes, which keyword search recovers
 - Implemented LLM-as-judge evaluation (RAGAS) to quantify RAG quality objectively across a 12-question golden dataset
 - Ran controlled experiments across retrieval configurations — found that "more retrieval" and "smaller chunks" are not always improvements; validated through measurement
 - Resolved complex dependency conflicts across RAGAS, LangChain, NumPy, SciPy, and PyArrow by pinning a compatible Python 3.11 stack
