@@ -211,7 +211,7 @@ async def ask_with_evaluator(request: EvaluationRequest, db: Session = Depends(g
 
         return {"question": request.question, "answer": answers, "document": document.filename, "evaluation_score": EvaluationScores(
         faithfulness=scores["faithfulness"], answer_relevancy=scores["answer_relevancy"], context_precision=scores["context_precision"],
-        context_recall=scores["context_recall"], evaluation_latency_seconds=scores["evaluation_latency_seconds"])}
+        context_recall=scores["context_recall"], evaluation_latency_seconds=scores["evaluation_latency_seconds"]), "sources": result["sources"]}
     except HTTPException as e:
         raise
     except Exception as e:
