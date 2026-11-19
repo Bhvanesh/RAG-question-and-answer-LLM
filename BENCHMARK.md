@@ -8,7 +8,7 @@ golden dataset derived from a real resume PDF document.
 ## Methodology
 
 ### Test Document
-Surya Balakrishnan — Resume PDF (real document)
+Surya Balakrishnan — Resume PDF (real document, single page)
 
 All questions were hand-crafted to cover different sections of the
 document: skills, experience, education, certifications, and projects.
@@ -23,23 +23,34 @@ Faithfulness:
 → LLM-as-judge: is every claim in the answer supported
   by the retrieved context?
 → 1.0 = fully grounded, 0.0 = hallucinated
+→ does NOT require ground_truth
 
 Answer Relevancy:
 → cosine similarity between answer embedding and question embedding
 → 1.0 = answer directly addresses the question
 → 0.0 = answer went off-topic
+→ does NOT require ground_truth
 
 Context Precision:
 → were the retrieved chunks actually useful?
 → 1.0 = all retrieved chunks were relevant
 → 0.5 = half the chunks were noise
+→ REQUIRES ground_truth to compute
 
 Context Recall:
 → did retrieval find ALL the relevant information?
-→ requires ground_truth to compute
 → 1.0 = everything needed was retrieved
 → 0.5 = missed half the relevant content
+→ REQUIRES ground_truth to compute
 ```
+
+### Important Note on ground_truth
+
+Context precision and context recall require `ground_truth` (the
+correct answer) to be provided in the request. All 12 golden dataset
+questions were evaluated with ground truth provided. For ad-hoc
+`/ask/evaluate` requests without ground truth, these two metrics
+return null — this is correct behavior, not an error.
 
 ### Configurations Tested
 
@@ -55,13 +66,30 @@ Config 3: k=3, chunk=500
 
 Config 4: BM25 + vector + RRF (current production)
 → hybrid search, k=10 candidates each, RRF top 3
+→ 20 total candidates → RRF re-ranks → top 3 to LLM
+```
+
+### Why k=10 Candidates but top 3 to LLM
+
+```
+Both vector and BM25 retrieve k=10 candidates each.
+RRF combines all 20 and re-ranks by combined score.
+Only the top 3 are passed to the LLM.
+
+This separates two concerns:
+→ Recall (finding relevant content): wider search, k=10
+→ Faithfulness (no noise to LLM): strict top 3 only
+
+Increasing k improves recall without hurting faithfulness
+because RRF filters before the LLM sees any context.
 ```
 
 ### Reproducibility
 
 All evaluations run against the same 12-question golden dataset.
 RAGAS uses GPT-4o-mini as judge — minor variation between runs
-is expected. Results reflect a single representative run per config.
+is expected (~±0.02 on faithfulness). Results reflect a single
+representative run per config.
 
 ---
 
@@ -82,9 +110,9 @@ is expected. Results reflect a single representative run per config.
 | 11 | Which location is the candidate working in? | Personal |
 | 12 | What is the candidate's location? | Personal |
 
-Questions were designed to cover diverse document sections and
-retrieval difficulty levels — from simple facts (CGPA) to
-multi-context answers (AI frameworks across multiple bullets).
+Questions 11 and 12 are intentionally similar — testing whether
+the system returns consistent answers for semantically overlapping
+queries.
 
 ---
 
@@ -134,8 +162,9 @@ sign that extra context introduces confusion rather than helping.
 Recall also dropped unexpectedly — the LLM mixed information from
 irrelevant chunks, reducing answer accuracy.
 
-**Finding:** More retrieval is NOT always better. Context noise
-hurts faithfulness significantly.
+**Finding:** More retrieval is NOT always better when passing
+chunks directly to LLM. Context noise hurts faithfulness
+significantly.
 
 ---
 
@@ -186,14 +215,13 @@ Hybrid search achieved perfect recall (1.0) — found all relevant
 content across all 12 questions. Faithfulness and relevancy both
 improved over baseline. Context precision dropped slightly — an
 expected tradeoff when combining two retrieval methods. With a
-larger candidate pool (20 chunks total), RRF must filter more
-aggressively, occasionally including marginally relevant chunks
-before filtering to top 3.
+larger candidate pool (20 chunks total), RRF filters aggressively
+to top 3, but occasional marginal chunks still reach the final set.
 
 **Finding:** BM25 recovers queries where semantic search fails on
 exact terms (e.g. "AZ-900", "ChromaDB", specific job titles).
-RRF re-ranks to top 3 before the LLM sees any context — so the
-noise from larger candidate pools doesn't reach the LLM.
+RRF re-ranks to top 3 before the LLM sees any context — wider
+search improves recall without adding noise to the LLM.
 
 ---
 
@@ -213,31 +241,32 @@ Context precision (0.833) not bolded — it dropped vs baseline.
 
 ## Key Findings
 
-**Finding 1 — More retrieval degrades faithfulness:**
+**Finding 1 — More retrieval degrades faithfulness when passed directly to LLM:**
 k=5 dropped faithfulness 22% vs k=3. Extra chunks add noise the
-LLM can't always filter. The sweet spot for this document was k=3
-for pure vector search.
+LLM can't always filter. The sweet spot for pure vector search
+was k=3 for this document.
 
 **Finding 2 — Smaller chunks hurt recall without increasing k:**
 k=3, chunk=500 dropped recall 18% vs baseline. The information
-exists in the document but gets fragmented. If using smaller chunks,
-k must increase proportionally.
+exists in the document but gets fragmented. Smaller chunks require
+proportionally higher k to maintain coverage.
 
 **Finding 3 — Hybrid search achieves perfect recall:**
 BM25 + vector + RRF is the only configuration to achieve recall=1.0.
 Semantic search alone missed some keyword-dependent queries — BM25
-recovers these without hurting faithfulness.
+recovers these without hurting faithfulness because RRF filters
+before the LLM sees context.
 
 **Finding 4 — Precision tradeoff is acceptable:**
-Hybrid search dropped context precision from 0.889 to 0.833. This
-is expected — a wider candidate pool includes more marginal chunks.
-The gain in recall (0.917 → 1.0) outweighs the precision cost for
-this use case.
+Hybrid search dropped context precision from 0.889 to 0.833.
+The gain in recall (0.917 → 1.0) outweighs the precision cost —
+missing relevant content is worse than including marginally
+relevant content for this use case.
 
 **Finding 5 — Zero failed questions across all configs:**
-All 12 questions returned answers in all configurations. The failure
-rate metric would matter more with adversarial or out-of-scope
-questions not present in this golden dataset.
+All 12 questions returned answers in all configurations. The
+failure rate metric would matter more with adversarial or
+out-of-scope questions not present in this golden dataset.
 
 ---
 
@@ -262,10 +291,11 @@ The combination (faithfulness 0.889 + recall 1.0) means:
 ## Running the Evaluation
 
 ```bash
-# Upload your document via /upload
-# Note the document_id returned
+# 1. Login via /login → copy JWT token
+# 2. Authorize in Swagger
+# 3. Upload your document via /upload → note document_id
+# 4. Run batch evaluation:
 
-# Run batch evaluation
 POST /batch-evaluate
 {
   "document_id": your_document_id
@@ -278,15 +308,24 @@ POST /batch-evaluate
 
 ```
 1. Single document:
-   Evaluated on one resume PDF.
-   Results may differ for longer, denser, or
-   multi-topic documents.
+   Evaluated on one resume PDF (single page, dense text).
+   Results may differ for longer, multi-section documents
+   like technical reports or legal filings.
 
 2. RAGAS variance:
-   LLM-as-judge metrics vary slightly between runs.
+   LLM-as-judge metrics vary ~±0.02 between runs.
    Scores reflect one representative run per config.
 
-3. Context precision requires ground_truth:
-   Context recall was computed with ground_truth provided.
-   Context precision without ground_truth may differ.
+3. ground_truth required for precision and recall:
+   Context precision and recall require ground_truth.
+   Ad-hoc questions without ground_truth return null
+   for these two metrics — by design.
+
+4. No adversarial questions:
+   All 12 questions are answerable from the document.
+   Out-of-scope abstention was not evaluated.
+
+5. Single document type:
+   Only PDF resume tested. DOCX support exists but
+   was not benchmarked separately.
 ```
