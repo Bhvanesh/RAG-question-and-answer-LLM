@@ -7,10 +7,9 @@ on:
     branches: [main]
 
 jobs:
-
-  # ── Job 1: Tests (already exists) ───────────────────────────
   test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -21,21 +20,26 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install fastapi uvicorn sqlalchemy pydantic \
+          "python-jose[cryptography]" "passlib[bcrypt]" bcrypt==4.0.1 \
+          python-multipart python-dotenv pytest httpx pytest-asyncio \
+          langchain langchain-openai langchain-community \
+          langchain-text-splitters pypdf docx2txt openai rank-bm25
 
       - name: Run tests
         env:
           DATABASE_URL: "sqlite+pysqlite:///:memory:"
-          OPENAI_API_KEY: "test-key"
-          SECRET_KEY: "test-secret-key"
-          LLM_MODEL: "gpt-4o-mini"
+          SECRET_KEY: "test-secret-key-12345"
+          OPENAI_API_KEY: "test-openai-key"
+          LLM_MODEL: "gpt-3.5-turbo"
         run: pytest tests/ -v
 
-  # ── Job 2: Build and push to ECR (new) ──────────────────────
+
   build-and-push:
     runs-on: ubuntu-latest
-    needs: test                                    # ← only runs if tests pass
-    if: github.ref == 'refs/heads/main'            # ← only on main branch
+    needs: test                                   
+    if: github.ref == 'refs/heads/main'            
 
     steps:
       - name: Checkout code
@@ -61,3 +65,6 @@ jobs:
           docker build -t $ECR_REGISTRY/rag-api:latest .
           docker push $ECR_REGISTRY/rag-api:$IMAGE_TAG
           docker push $ECR_REGISTRY/rag-api:latest
+          
+        
+
