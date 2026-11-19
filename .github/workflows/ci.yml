@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -7,9 +7,10 @@ on:
     branches: [main]
 
 jobs:
+
+  # ── Job 1: Tests (already exists) ───────────────────────────
   test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -20,17 +21,43 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: |
-          pip install fastapi uvicorn sqlalchemy pydantic \
-          "python-jose[cryptography]" "passlib[bcrypt]" bcrypt==4.0.1 \
-          python-multipart python-dotenv pytest httpx pytest-asyncio \
-          langchain langchain-openai langchain-community \
-          langchain-text-splitters pypdf docx2txt openai rank-bm25
+        run: pip install -r requirements.txt
 
       - name: Run tests
         env:
           DATABASE_URL: "sqlite+pysqlite:///:memory:"
-          SECRET_KEY: "test-secret-key-12345"
-          OPENAI_API_KEY: "test-openai-key"
-          LLM_MODEL: "gpt-3.5-turbo"
+          OPENAI_API_KEY: "test-key"
+          SECRET_KEY: "test-secret-key"
+          LLM_MODEL: "gpt-4o-mini"
         run: pytest tests/ -v
+
+  # ── Job 2: Build and push to ECR (new) ──────────────────────
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: test                                    # ← only runs if tests pass
+    if: github.ref == 'refs/heads/main'            # ← only on main branch
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/rag-api:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/rag-api:latest .
+          docker push $ECR_REGISTRY/rag-api:$IMAGE_TAG
+          docker push $ECR_REGISTRY/rag-api:latest
